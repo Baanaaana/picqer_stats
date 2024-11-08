@@ -90,7 +90,7 @@ class PicqerOpenPicklistsSensor(PicqerBaseSensor):
 
     @property
     def unit_of_measurement(self):
-        return "orders"
+        return "Picklists"
 
 class PicqerOpenOrdersSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -122,7 +122,7 @@ class PicqerClosedPicklistsThisWeekSensor(PicqerBaseSensor):
 
     @property
     def unit_of_measurement(self):
-        return "orders"
+        return "Picklists"
 
 class PicqerTotalOrdersSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -147,7 +147,7 @@ class PicqerClosedPicklistsTodaySensor(PicqerBaseSensor):
 
     @property
     def unit_of_measurement(self):
-        return "orders"
+        return "Picklists"
 
 class PicqerNewCustomersThisWeekSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
