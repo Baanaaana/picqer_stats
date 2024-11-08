@@ -3,7 +3,7 @@
     "name": "Picqer Stats",
     "version": "1.0",
     "config_flow": true,
-    "documentation": "https://www.example.com",
+    "documentation": "https://github.com/Baanaaana/Picqer-Stats",
     "requirements": [],
     "codeowners": ["@baanaaana"]
 }

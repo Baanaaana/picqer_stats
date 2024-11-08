@@ -1,6 +1,6 @@
 # Picqer Stats
 
-Create sensors for the following stats.
+Create sensors for the following stats. (https://picqer.com/en/api/stats)
 
 - Open Picklists
 - Open Orders
