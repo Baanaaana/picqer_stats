@@ -48,6 +48,10 @@ class PicqerBaseSensor(Entity):
     def icon(self):
         return "mdi:asterisk-circle-outline"
 
+    @property
+    def unit_of_measurement(self):
+        return "orders"
+
     def update(self):
         # Build the URL dynamically using the store URL prefix
         url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
