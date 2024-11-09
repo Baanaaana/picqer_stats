@@ -1,4 +1,4 @@
-# Picqer Stats
+# Picqer Stats for Home Assistant
 
 Create sensors for the following stats. (https://picqer.com/en/api/stats)
 
