@@ -9,3 +9,8 @@ Create sensors for the following stats. (https://picqer.com/en/api/stats)
 - Closed Picklists This Week
 - Total Orders
 - Backorders
+- Closed Picklists Today
+- New Customers This Week
+- Total Products
+- Active Products
+- Inactive Products
