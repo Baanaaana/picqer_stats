@@ -48,26 +48,33 @@ class PicqerBatchSensorManager:
         self._sensors = {}
 
     async def update_sensors(self):
+        """Fetch uncompleted batches and update sensors accordingly."""
         url = f"https://{self._store_url_prefix}.picqer.com/api/v1/picklists/batches"
         try:
+            _LOGGER.info("Fetching uncompleted batches from Picqer API...")
             response = requests.get(url, auth=HTTPBasicAuth(self._api_key, ""))
             response.raise_for_status()
             data = response.json()
+
+            _LOGGER.debug(f"API Response Data: {data}")
 
             # Filter uncompleted batches
             uncompleted_batches = [
                 batch for batch in data if batch.get("status") != "completed"
             ]
+            _LOGGER.info(f"Found {len(uncompleted_batches)} uncompleted batches.")
 
             new_sensors = []
             for batch in uncompleted_batches:
                 batch_id = batch["idbatch"]
                 if batch_id not in self._sensors:
+                    _LOGGER.info(f"Creating sensor for batch ID: {batch_id}")
                     sensor = PicqerBatchSensor(batch)
                     self._sensors[batch_id] = sensor
                     new_sensors.append(sensor)
                 else:
                     self._sensors[batch_id].update_data(batch)
+                    _LOGGER.info(f"Updating sensor for batch ID: {batch_id}")
 
             # Add any new sensors to Home Assistant
             if new_sensors:
