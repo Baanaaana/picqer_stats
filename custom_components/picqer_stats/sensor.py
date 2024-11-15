@@ -1,3 +1,4 @@
+
 import logging
 from homeassistant.helpers.entity import Entity
 import requests
@@ -11,7 +12,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     api_key = config_entry.data["api_key"]
     store_url_prefix = config_entry.data["store_url_prefix"]
 
-    # Create sensor instances for each valid endpoint, using the store URL prefix
     sensors = [
         PicqerOpenPicklistsSensor(api_key, store_url_prefix),
         PicqerOpenOrdersSensor(api_key, store_url_prefix),
@@ -53,8 +53,11 @@ class PicqerBaseSensor(Entity):
     def icon(self):
         return "mdi:asterisk-circle-outline"
 
+    @property
+    def should_poll(self):
+        return True
+
     def update(self):
-        # Build the URL dynamically using the store URL prefix
         url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
         try:
             _LOGGER.info(f"Requesting data from {url} for {self._name}")
@@ -62,28 +65,19 @@ class PicqerBaseSensor(Entity):
             _LOGGER.info(f"Received status code {response.status_code} from {url}")
             response.raise_for_status()
             data = response.json()
-
-            # Log the response data for debugging purposes
             _LOGGER.debug(f"API Response for {self._name}: {data}")
 
-            # Set the state based on "value" if present; otherwise, log an error
             if "value" in data:
                 self._state = data["value"]
             else:
                 self._state = "Error: No value field"
                 _LOGGER.error(f"No 'value' field found in response for {self._name}")
 
-        except requests.exceptions.HTTPError as err:
+        except requests.exceptions.RequestException as err:
             self._state = "Error"
-            _LOGGER.error(f"HTTP error for {self._name}: {err}")
-        except requests.exceptions.RequestException as req_err:
-            self._state = "Error: Cannot reach API"
-            _LOGGER.error(f"Request error for {self._name}: {req_err}")
-        except Exception as e:
-            self._state = "Error"
-            _LOGGER.error(f"Unexpected error for {self._name}: {e}")
+            _LOGGER.error(f"Error for {self._name}: {err}")
 
-# Define each sensor with its specific endpoint, unique ID, and unit of measurement
+# Sensor definitions with state_class and unit_of_measurement
 class PicqerOpenPicklistsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Open Picklists", "stats/open-picklists", "picqer_open_picklists")
@@ -91,6 +85,10 @@ class PicqerOpenPicklistsSensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "orders"
+
+    @property
+    def state_class(self):
+        return "measurement"
 
 class PicqerOpenOrdersSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -100,6 +98,10 @@ class PicqerOpenOrdersSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "orders"
 
+    @property
+    def state_class(self):
+        return "measurement"
+
 class PicqerNewOrdersTodaySensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer New Orders Today", "stats/new-orders-today", "picqer_new_orders_today")
@@ -107,6 +109,10 @@ class PicqerNewOrdersTodaySensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "orders"
+
+    @property
+    def state_class(self):
+        return "measurement"
 
 class PicqerNewOrdersThisWeekSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -116,6 +122,10 @@ class PicqerNewOrdersThisWeekSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "orders"
 
+    @property
+    def state_class(self):
+        return "measurement"
+
 class PicqerClosedPicklistsThisWeekSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Closed Picklists This Week", "stats/closed-picklists-this-week", "picqer_closed_picklists_this_week")
@@ -123,6 +133,10 @@ class PicqerClosedPicklistsThisWeekSensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "orders"
+
+    @property
+    def state_class(self):
+        return "measurement"
 
 class PicqerTotalOrdersSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -132,6 +146,10 @@ class PicqerTotalOrdersSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "orders"
 
+    @property
+    def state_class(self):
+        return "total_increasing"
+
 class PicqerBackordersSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Backorders", "stats/backorders", "picqer_backorders")
@@ -140,7 +158,10 @@ class PicqerBackordersSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "orders"
 
-# New Sensors with specific unit of measurement
+    @property
+    def state_class(self):
+        return "measurement"
+
 class PicqerClosedPicklistsTodaySensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Closed Picklists Today", "stats/closed-picklists-today", "picqer_closed_picklists_today")
@@ -148,6 +169,10 @@ class PicqerClosedPicklistsTodaySensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "orders"
+
+    @property
+    def state_class(self):
+        return "measurement"
 
 class PicqerNewCustomersThisWeekSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -157,6 +182,10 @@ class PicqerNewCustomersThisWeekSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "customers"
 
+    @property
+    def state_class(self):
+        return "measurement"
+
 class PicqerTotalProductsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Total Products", "stats/total-products", "picqer_total_products")
@@ -164,6 +193,10 @@ class PicqerTotalProductsSensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "products"
+
+    @property
+    def state_class(self):
+        return "measurement"
 
 class PicqerActiveProductsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
@@ -173,6 +206,10 @@ class PicqerActiveProductsSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "products"
 
+    @property
+    def state_class(self):
+        return "measurement"
+
 class PicqerInactiveProductsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Inactive Products", "stats/inactive-products", "picqer_inactive_products")
@@ -180,3 +217,7 @@ class PicqerInactiveProductsSensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "products"
+
+    @property
+    def state_class(self):
+        return "measurement"
