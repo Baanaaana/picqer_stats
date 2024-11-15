@@ -53,11 +53,6 @@ class PicqerBaseSensor(Entity):
     def icon(self):
         return "mdi:asterisk-circle-outline"
 
-    @property
-    def state_class(self):
-        """Define state class as total_increasing for long-term storage."""
-        return "total_increasing"
-
     def update(self):
         # Build the URL dynamically using the store URL prefix
         url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
@@ -145,6 +140,7 @@ class PicqerBackordersSensor(PicqerBaseSensor):
     def unit_of_measurement(self):
         return "orders"
 
+# New Sensors with specific unit of measurement
 class PicqerClosedPicklistsTodaySensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Closed Picklists Today", "stats/closed-picklists-today", "picqer_closed_picklists_today")
