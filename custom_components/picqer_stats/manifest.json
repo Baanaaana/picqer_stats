@@ -2,7 +2,7 @@
     "domain": "picqer_stats",
     "name": "Picqer Stats",
     "config_flow": true,
-    "documentation": "https://github.com/Baanaaana/Picqer-Stats",
+    "documentation": "https://github.com/Baanaaana/picqer_stats",
     "requirements": [],
     "codeowners": ["@baanaaana"]
 }
