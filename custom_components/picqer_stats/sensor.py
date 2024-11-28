@@ -3,16 +3,21 @@ from datetime import datetime, timedelta
 from homeassistant.helpers.entity import Entity
 import requests
 from requests.auth import HTTPBasicAuth
-from .const import DOMAIN
+from .const import DOMAIN, ATTR_PICKER_NAME, ATTR_BATCH_TYPE, ATTR_TOTAL_PRODUCTS, ATTR_TOTAL_PICKLISTS, ATTR_CREATED_AT, ATTR_DURATION, DEFAULT_SCAN_INTERVAL
+from collections import defaultdict
+import base64
+from typing import Any, Dict, Optional
 
 # Set up logging
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the Picqer sensors."""
     api_key = config_entry.data["api_key"]
     store_url_prefix = config_entry.data["store_url_prefix"]
 
     sensors = [
+        # Stats sensors
         PicqerOpenPicklistsSensor(api_key, store_url_prefix),
         PicqerOpenOrdersSensor(api_key, store_url_prefix),
         PicqerNewOrdersTodaySensor(api_key, store_url_prefix),
@@ -25,8 +30,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         PicqerTotalProductsSensor(api_key, store_url_prefix),
         PicqerActiveProductsSensor(api_key, store_url_prefix),
         PicqerInactiveProductsSensor(api_key, store_url_prefix),
-        PicqerClosedPicklists7DaysAgoSensor(api_key, store_url_prefix)
+        PicqerClosedPicklists7DaysAgoSensor(api_key, store_url_prefix),
+        # Add the new batch and products sensors
+        PicqerBatchSensor(api_key, store_url_prefix),
+        PicqerLeadingItemsSensor(api_key, store_url_prefix)
     ]
+    
     async_add_entities(sensors, True)
 
 class PicqerBaseSensor(Entity):
@@ -287,3 +296,129 @@ class PicqerClosedPicklists7DaysAgoSensor(PicqerBaseSensor):
     @property
     def state_class(self):
         return "measurement"
+
+class PicqerBatchSensor(PicqerBaseSensor):
+    """Representation of a Picqer Batch sensor."""
+    
+    def __init__(self, api_key, store_url_prefix):
+        super().__init__(api_key, store_url_prefix, "Picqer Batches", "picklists/batches", "picqer_batches")
+        self._attrs: Dict[str, Any] = {}
+
+    @property
+    def scan_interval(self) -> timedelta:
+        """Return the scanning interval."""
+        return DEFAULT_SCAN_INTERVAL
+
+    def update(self):
+        """Fetch new state data for the sensor."""
+        try:
+            url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
+            response = requests.get(url, auth=HTTPBasicAuth(self._api_key, ""))
+            response.raise_for_status()
+            data = response.json()
+
+            # Get today's date at midnight for comparison
+            today_midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Filter batches for today
+            today_batches = []
+            today_open = 0
+            today_completed = 0
+            
+            for batch in data:
+                created_at = datetime.strptime(batch["created_at"], "%Y-%m-%d %H:%M:%S")
+                
+                if created_at >= today_midnight:
+                    picker_name = batch["assigned_to"]["full_name"] if batch["assigned_to"] else "Unassigned"
+                    duration = datetime.now() - created_at
+                    
+                    if batch["status"] == "completed":
+                        today_completed += 1
+                    else:
+                        today_open += 1
+                    
+                    today_batches.append({
+                        ATTR_PICKER_NAME: picker_name,
+                        ATTR_BATCH_TYPE: batch["type"],
+                        ATTR_TOTAL_PRODUCTS: batch["total_products"],
+                        ATTR_TOTAL_PICKLISTS: batch["total_picklists"],
+                        ATTR_CREATED_AT: batch["created_at"],
+                        ATTR_DURATION: str(duration).split(".")[0],
+                        "status": batch["status"]
+                    })
+            
+            self._state = len(today_batches)
+            self._attrs.update({
+                "batches": today_batches,
+                "open_batches_today": today_open,
+                "completed_batches_today": today_completed,
+                "total_batches_today": len(today_batches)
+            })
+
+        except requests.exceptions.RequestException as err:
+            self._state = "Error"
+            _LOGGER.error(f"Error for {self._name}: {err}")
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attrs
+
+class PicqerLeadingItemsSensor(PicqerBaseSensor):
+    """Representation of a Picqer Products Picked sensor."""
+    
+    def __init__(self, api_key, store_url_prefix):
+        super().__init__(api_key, store_url_prefix, "Picqer Products Picked", "picklists/batches", "picqer_products_picked")
+        self._attrs: Dict[str, Any] = {}
+
+    def update(self):
+        """Fetch new state data for the sensor."""
+        try:
+            url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
+            response = requests.get(url, auth=HTTPBasicAuth(self._api_key, ""))
+            response.raise_for_status()
+            data = response.json()
+
+            today_midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            picker_products = defaultdict(int)
+            total_products = 0
+            
+            for batch in data:
+                created_at = datetime.strptime(batch["created_at"], "%Y-%m-%d %H:%M:%S")
+                
+                if created_at >= today_midnight:
+                    picker_name = batch["assigned_to"]["full_name"] if batch["assigned_to"] else "Unassigned"
+                    products = int(batch.get("total_products", 0))
+                    
+                    picker_products[picker_name] += products
+                    total_products += products
+            
+            sorted_pickers = sorted(
+                picker_products.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )
+            
+            leaderboard = [
+                {"picker": name, "products_picked": count}
+                for name, count in sorted_pickers
+                if name not in ("Unassigned", "Unknown")
+            ]
+            
+            self._state = total_products
+            self._attrs.update({
+                "leaderboard": leaderboard,
+                "top_picker": leaderboard[0]["picker"] if leaderboard else "No picks today",
+                "top_picker_products": leaderboard[0]["products_picked"] if leaderboard else 0,
+                "total_pickers": len(leaderboard),
+                "total_products": total_products
+            })
+
+        except requests.exceptions.RequestException as err:
+            self._state = "Error"
+            _LOGGER.error(f"Error for {self._name}: {err}")
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attrs

@@ -1,8 +1,9 @@
 # Picqer Stats for Home Assistant
 ![logo](https://github.com/Baanaaana/picqer_stats/blob/main/image/logo.png)
 
-Create sensors for the following stats. (https://picqer.com/en/api/stats)
+Create sensors for the following stats and batch information from Picqer.
 
+## Stats Sensors
 - Open Picklists
 - Open Orders
 - New Orders Today
@@ -16,3 +17,14 @@ Create sensors for the following stats. (https://picqer.com/en/api/stats)
 - Total Products
 - Active Products
 - Inactive Products
+
+## Batch Sensors
+- Picqer Batches
+  - Shows today's batches with details like picker, type, products, and duration
+  - Tracks open and completed batches
+
+## Picker Performance
+- Products Picked
+  - Total products picked today
+  - Leaderboard of pickers
+  - Top picker statistics
