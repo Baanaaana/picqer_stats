@@ -309,6 +309,10 @@ class PicqerBatchSensor(PicqerBaseSensor):
         """Return the scanning interval."""
         return DEFAULT_SCAN_INTERVAL
 
+    @property
+    def state_class(self):
+        return "measurement"
+
     def update(self):
         """Fetch new state data for the sensor."""
         try:
@@ -370,6 +374,10 @@ class PicqerLeadingItemsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Products Picked", "picklists/batches", "picqer_products_picked")
         self._attrs: Dict[str, Any] = {}
+
+    @property
+    def state_class(self):
+        return "measurement"
 
     def update(self):
         """Fetch new state data for the sensor."""
