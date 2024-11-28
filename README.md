@@ -21,7 +21,7 @@ Create sensors for the following stats and batch information from Picqer.
 ## Batch Sensors
 - Picqer Batches
   - Shows today's batches with details like picker, type, products, and duration
-  - Tracks open and completed batches
+  - Tracks open, completed, and cancelled batches
 
 ## Picker Performance
 - Products Picked
