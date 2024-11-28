@@ -1,5 +1,5 @@
-
 import logging
+from datetime import datetime, timedelta
 from homeassistant.helpers.entity import Entity
 import requests
 from requests.auth import HTTPBasicAuth
@@ -24,7 +24,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         PicqerNewCustomersThisWeekSensor(api_key, store_url_prefix),
         PicqerTotalProductsSensor(api_key, store_url_prefix),
         PicqerActiveProductsSensor(api_key, store_url_prefix),
-        PicqerInactiveProductsSensor(api_key, store_url_prefix)
+        PicqerInactiveProductsSensor(api_key, store_url_prefix),
+        PicqerClosedPicklists7DaysAgoSensor(api_key, store_url_prefix)
     ]
     async_add_entities(sensors, True)
 
@@ -77,7 +78,6 @@ class PicqerBaseSensor(Entity):
             self._state = "Error"
             _LOGGER.error(f"Error for {self._name}: {err}")
 
-# Sensor definitions with state_class and unit_of_measurement
 class PicqerOpenPicklistsSensor(PicqerBaseSensor):
     def __init__(self, api_key, store_url_prefix):
         super().__init__(api_key, store_url_prefix, "Picqer Open Picklists", "stats/open-picklists", "picqer_open_picklists")
@@ -217,6 +217,72 @@ class PicqerInactiveProductsSensor(PicqerBaseSensor):
     @property
     def unit_of_measurement(self):
         return "products"
+
+    @property
+    def state_class(self):
+        return "measurement"
+
+class PicqerClosedPicklists7DaysAgoSensor(PicqerBaseSensor):
+    """Sensor for closed picklists from exactly 7 days ago."""
+    
+    def __init__(self, api_key, store_url_prefix):
+        super().__init__(api_key, store_url_prefix, "Picqer Closed Picklists 7 Days Ago", "picklists", "picqer_closed_picklists_7_days_ago")
+
+    def update(self):
+        # Calculate the date range for exactly 7 days ago
+        target_date = datetime.now().date() - timedelta(days=7)
+        start_date = target_date.strftime('%Y-%m-%d 00:00:00')
+        end_date = target_date.strftime('%Y-%m-%d 23:59:59')
+        
+        # Build base URL with query parameters
+        params = {
+            'status': 'closed',
+            'closed_after': start_date,
+            'closed_before': end_date,
+            'offset': 0,
+            'limit': 100  # Maximum items per page
+        }
+        
+        url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
+        total_picklists = 0
+        
+        try:
+            while True:
+                _LOGGER.debug(f"Requesting page with offset {params['offset']}")
+                response = requests.get(url, params=params, auth=HTTPBasicAuth(self._api_key, ""))
+                _LOGGER.info(f"Received status code {response.status_code} from {url}")
+                response.raise_for_status()
+                data = response.json()
+                
+                if not isinstance(data, list):
+                    self._state = "Error: Invalid response format"
+                    _LOGGER.error(f"Invalid response format for {self._name}: {data}")
+                    return
+
+                batch_size = len(data)
+                _LOGGER.debug(f"Received {batch_size} picklists in this batch")
+                total_picklists += batch_size
+                _LOGGER.debug(f"Running total: {total_picklists}")
+                
+                # If we got no results or less than the limit, we've reached the end
+                if batch_size == 0 or batch_size < params['limit']:
+                    _LOGGER.debug(f"Reached end of results with total: {total_picklists}")
+                    break
+                
+                # Prepare for next page
+                params['offset'] += params['limit']
+                _LOGGER.debug(f"Moving to next page with offset: {params['offset']}")
+
+            _LOGGER.info(f"Final total picklists count: {total_picklists}")
+            self._state = total_picklists
+
+        except requests.exceptions.RequestException as err:
+            self._state = "Error"
+            _LOGGER.error(f"Error for {self._name}: {err}")
+
+    @property
+    def unit_of_measurement(self):
+        return "orders"
 
     @property
     def state_class(self):
