@@ -328,6 +328,7 @@ class PicqerBatchSensor(PicqerBaseSensor):
             today_batches = []
             today_open = 0
             today_completed = 0
+            today_canceled = 0  # New counter for canceled batches
             
             for batch in data:
                 created_at = datetime.strptime(batch["created_at"], "%Y-%m-%d %H:%M:%S")
@@ -338,6 +339,8 @@ class PicqerBatchSensor(PicqerBaseSensor):
                     
                     if batch["status"] == "completed":
                         today_completed += 1
+                    elif batch["status"] == "canceled":  # Add check for canceled status
+                        today_canceled += 1
                     else:
                         today_open += 1
                     
@@ -356,6 +359,7 @@ class PicqerBatchSensor(PicqerBaseSensor):
                 "batches": today_batches,
                 "open_batches_today": today_open,
                 "completed_batches_today": today_completed,
+                "canceled_batches_today": today_canceled,  # Add canceled batches to attributes
                 "total_batches_today": len(today_batches)
             })
 
