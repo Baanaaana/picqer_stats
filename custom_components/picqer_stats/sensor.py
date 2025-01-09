@@ -297,59 +297,80 @@ class PicqerClosedPicklists7DaysAgoSensor(PicqerBaseSensor):
     def state_class(self):
         return "measurement"
 
-class PicqerBatchSensor(Entity):
+class PicqerBatchSensor(PicqerBaseSensor):
     """Representation of a Picqer Batch sensor."""
     
     def __init__(self, api_key, store_url_prefix):
-        self._api_key = api_key
-        self._store_url_prefix = store_url_prefix
-        self._name = "Picqer Batches"
-        self._state = None
+        super().__init__(api_key, store_url_prefix, "Picqer Batches", "picklists/batches", "picqer_batches")
         self._attrs: Dict[str, Any] = {}
 
     @property
-    def name(self):
-        return self._name
+    def scan_interval(self) -> timedelta:
+        """Return the scanning interval."""
+        return DEFAULT_SCAN_INTERVAL
 
     @property
-    def state(self):
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        return self._attrs
+    def state_class(self):
+        return "measurement"
 
     def update(self):
         """Fetch new state data for the sensor."""
-        url = f"https://{self._store_url_prefix}.picqer.com/api/v1/picklists/batches"
         try:
+            url = f"https://{self._store_url_prefix}.picqer.com/api/v1/{self._endpoint}"
             response = requests.get(url, auth=HTTPBasicAuth(self._api_key, ""))
             response.raise_for_status()
             data = response.json()
 
+            # Get today's date at midnight for comparison
             today_midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Filter batches for today
             today_batches = []
-
+            today_open = 0
+            today_completed = 0
+            today_canceled = 0  # New counter for canceled batches
+            
             for batch in data:
                 created_at = datetime.strptime(batch["created_at"], "%Y-%m-%d %H:%M:%S")
+                
                 if created_at >= today_midnight:
+                    picker_name = batch["assigned_to"]["full_name"] if batch["assigned_to"] else "Unassigned"
+                    duration = datetime.now() - created_at
+                    
+                    if batch["status"] == "completed":
+                        today_completed += 1
+                    elif batch["status"] == "canceled":  # Add check for canceled status
+                        today_canceled += 1
+                    else:
+                        today_open += 1
+                    
                     today_batches.append({
-                        "id": batch["id"],
-                        ATTR_PICKER_NAME: batch["assigned_to"]["full_name"] if batch["assigned_to"] else "Unassigned",
+                        ATTR_PICKER_NAME: picker_name,
                         ATTR_BATCH_TYPE: batch["type"],
                         ATTR_TOTAL_PRODUCTS: batch["total_products"],
                         ATTR_TOTAL_PICKLISTS: batch["total_picklists"],
                         ATTR_CREATED_AT: batch["created_at"],
-                        ATTR_DURATION: str(datetime.now() - created_at).split(".")[0],
+                        ATTR_DURATION: str(duration).split(".")[0],
                         "status": batch["status"]
                     })
-
+            
             self._state = len(today_batches)
-            self._attrs.update({"batches": today_batches})
+            self._attrs.update({
+                "batches": today_batches,
+                "open_batches_today": today_open,
+                "completed_batches_today": today_completed,
+                "canceled_batches_today": today_canceled,  # Add canceled batches to attributes
+                "total_batches_today": len(today_batches)
+            })
 
         except requests.exceptions.RequestException as err:
             self._state = "Error"
-            _LOGGER.error(f"Error fetching batch data: {err}")
+            _LOGGER.error(f"Error for {self._name}: {err}")
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attrs
 
 class PicqerLeadingItemsSensor(PicqerBaseSensor):
     """Representation of a Picqer Products Picked sensor."""
