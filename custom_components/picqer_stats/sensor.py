@@ -345,6 +345,7 @@ class PicqerBatchSensor(PicqerBaseSensor):
                         today_open += 1
                     
                     today_batches.append({
+                        "id": batch["id"],
                         ATTR_PICKER_NAME: picker_name,
                         ATTR_BATCH_TYPE: batch["type"],
                         ATTR_TOTAL_PRODUCTS: batch["total_products"],
