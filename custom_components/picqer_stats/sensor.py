@@ -372,6 +372,12 @@ class PicqerBatchSensor(PicqerBaseSensor):
         """Return the state attributes."""
         return self._attrs
 
+    def reset_batch(self, batch_id):
+        """Reset the progress of a batch."""
+        self.hass.services.call(
+            DOMAIN, "reset_batch", {"batch_id": batch_id}
+        )
+
 class PicqerLeadingItemsSensor(PicqerBaseSensor):
     """Representation of a Picqer Products Picked sensor."""
     
