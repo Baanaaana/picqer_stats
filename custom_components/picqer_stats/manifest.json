@@ -1,11 +1,10 @@
 {
     "domain": "picqer_stats",
     "name": "Picqer Stats",
-    "version": "v1.7.0",
+    "version": "v1.6.2",
     "config_flow": true,
     "dependencies": ["frontend", "http"],
     "documentation": "https://github.com/Baanaaana/picqer_stats",
     "requirements": [],
-    "codeowners": ["@baanaaana"],
-    "services": ["reset_batch"]
+    "codeowners": ["@baanaaana"]
 }
