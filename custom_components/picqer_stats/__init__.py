@@ -23,15 +23,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         
         # Call the Picqer API to reset the batch
         url = f"https://{store_url_prefix}.picqer.com/api/v1/picklists/batches/{batch_id}/reset"
-        response = requests.post(url, auth=HTTPBasicAuth(api_key, ""))
-        
-        if response.status_code == 200:
+        try:
+            response = requests.post(url, auth=HTTPBasicAuth(api_key, ""))
+            response.raise_for_status()
             _LOGGER.info(f"Batch {batch_id} reset successfully.")
-        else:
-            _LOGGER.error(f"Failed to reset batch {batch_id}: {response.text}")
+        except requests.exceptions.RequestException as err:
+            _LOGGER.error(f"Failed to reset batch {batch_id}: {err}")
 
     hass.services.async_register(
-        DOMAIN, "reset_batch", handle_reset_batch_service, schema=vol.Schema({
+        "picqer_stats", "reset_batch", handle_reset_batch_service, schema=vol.Schema({
             vol.Required("batch_id"): str,
         })
     )
